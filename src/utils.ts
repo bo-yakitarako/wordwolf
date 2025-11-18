@@ -70,3 +70,17 @@ export function buildEmbed(title: string, ...params: DescriptionParams | FieldsP
   }
   return embed;
 }
+
+export function timeTitle(time: number) {
+  return time < 60 ? `${time}秒` : `${Math.floor(time / 60)}分`;
+}
+
+export function timeText(time: number) {
+  const minute = `${Math.floor(time / 60)}`.padStart(2, '0');
+  const second = (time % 60).toString().padStart(2, '0');
+  return `${minute}:${second}`;
+}
+
+export function buildTimeEmbed(time: number) {
+  return buildEmbed('残り時間', timeText(time), 'success');
+}

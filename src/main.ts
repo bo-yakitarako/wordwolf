@@ -1,12 +1,18 @@
-import { Client, GatewayIntentBits, Events, REST, Routes } from 'discord.js';
+import { Client, GatewayIntentBits, Events, REST, Routes, MessageFlags } from 'discord.js';
 import { config } from 'dotenv';
 import { commands, slashCommandsInteraction } from './components/slashCommands';
 import { buttonInteraction } from './components/buttons';
+import { game } from './WordWolf';
 
 config();
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 client.once(Events.ClientReady, () => {
@@ -14,12 +20,26 @@ client.once(Events.ClientReady, () => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.guild === null) {
+    if (interaction.isRepliable()) {
+      await interaction.reply({ content: 'なに？', flags: MessageFlags.Ephemeral });
+    }
+    return;
+  }
   if (interaction.isChatInputCommand()) {
     await slashCommandsInteraction(interaction);
   }
   if (interaction.isButton()) {
     await buttonInteraction(interaction);
   }
+});
+
+client.on(Events.MessageCreate, async (message) => {
+  const wordWolf = game.get(message);
+  if (message.author.bot || wordWolf === null || !wordWolf.isQuestionReady(message)) {
+    return;
+  }
+  await wordWolf.sendQuestion(message);
 });
 
 const TOKEN = process.env.TOKEN as string;
