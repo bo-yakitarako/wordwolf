@@ -141,6 +141,7 @@ export class WordWolf {
     this.quesions = {};
     this.questionMessages = [];
     this.answers = {};
+    this.votes = {};
     const components = [makeButtonRow('word', 'question')];
     await interaction.reply({ components, embeds: [buildTimeEmbed(time)] });
     this.talk('start');
