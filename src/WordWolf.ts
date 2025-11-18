@@ -115,12 +115,24 @@ export class WordWolf {
       .filter((m) => !m.user.bot && !m.voice.selfMute)
       .map((m) => m.user.id);
     if (ids.length > 10) {
-      this.channel.send('10人までで頼むよー誰かミュートしてー');
+      const content = '10人までで頼むよー誰かミュートしてー';
+      if (interaction.isButton()) {
+        await interaction.deferUpdate();
+        this.channel.send(content);
+      } else {
+        interaction.reply(content);
+      }
       await this.talk('over');
       return;
     }
     if (ids.length < 3) {
-      this.channel.send('せめて3人は必要なんじゃない？');
+      const content = 'せめて3人は必要なんじゃない？';
+      if (interaction.isButton()) {
+        await interaction.deferUpdate();
+        this.channel.send(content);
+      } else {
+        interaction.reply(content);
+      }
       await this.talk('under');
       return;
     }
