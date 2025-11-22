@@ -378,12 +378,12 @@ export class WordWolf {
   }
 
   public async continue(interaction: RepliableInteraction) {
-    if (this.status !== 'result') {
-      await interaction.reply({ content: '今はそのときじゃないねえ', flags });
-      return;
-    }
     if (interaction.user.id !== this.parentId) {
       await interaction.reply({ content: 'おめえにその権利ねえから！', flags });
+      return;
+    }
+    if (this.status !== 'result') {
+      await interaction.reply({ content: '今はそのときじゃないねえ', flags });
       return;
     }
     if (this.themeIndex >= themes.length) {
@@ -396,12 +396,12 @@ export class WordWolf {
   }
 
   public async finish(interaction: RepliableInteraction) {
-    if (this.status !== 'result') {
-      await interaction.reply({ content: '今はそのときじゃないねえ', flags });
-      return;
-    }
     if (interaction.user.id !== this.parentId) {
       await interaction.reply({ content: 'おめえにその権利ねえから！', flags });
+      return;
+    }
+    if (this.status !== 'result') {
+      await interaction.reply({ content: '今はそのときじゃないねえ', flags });
       return;
     }
     const content = 'ばいばーい';
