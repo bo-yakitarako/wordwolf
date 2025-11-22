@@ -114,8 +114,8 @@ export class WordWolf {
     const ids = this.channel.members
       .filter((m) => !m.user.bot && !m.voice.selfMute)
       .map((m) => m.user.id);
-    if (ids.length > 10) {
-      const content = '10人までで頼むよー誰かミュートしてー';
+    if (ids.length > 8) {
+      const content = '8人までで頼むよー誰かミュートしてー';
       if (interaction.isButton()) {
         await interaction.deferUpdate();
         this.channel.send(content);
