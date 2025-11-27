@@ -1,9 +1,9 @@
-import typescriptEslint from '@typescript-eslint/eslint-plugin';
-import globals from 'globals';
-import tsParser from '@typescript-eslint/parser';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { FlatCompat } from '@eslint/eslintrc';
+import typescriptEslint from "@typescript-eslint/eslint-plugin";
+import globals from "globals";
+import tsParser from "@typescript-eslint/parser";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { FlatCompat } from "@eslint/eslintrc";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,14 +11,14 @@ const compat = new FlatCompat({ baseDirectory: __dirname });
 
 export default [
   ...compat.extends(
-    'plugin:@typescript-eslint/recommended',
-    'plugin:prettier/recommended',
-    'prettier',
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended",
+    "prettier",
   ),
   {
-    ignores: ['dist', 'node_modules', '**/*.js', '**/*.mjs'],
+    ignores: ["dist", "node_modules", "**/*.js", "**/*.mjs"],
     plugins: {
-      '@typescript-eslint': typescriptEslint,
+      "@typescript-eslint": typescriptEslint,
     },
 
     languageOptions: {
@@ -29,39 +29,39 @@ export default [
 
       parser: tsParser,
       ecmaVersion: 12,
-      sourceType: 'module',
+      sourceType: "module",
     },
 
     rules: {
-      complexity: ['error', 11],
-      camelcase: 'off',
-      'class-methods-use-this': 'off',
-      'lines-between-class-members': 'off',
-      'no-shadow': 'off',
-      'no-use-before-define': 'off',
-      '@typescript-eslint/no-unused-vars': 'error',
-      '@typescript-eslint/no-use-before-define': 'off',
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/ban-ts-comment': 'off',
-
-      '@typescript-eslint/naming-convention': [
-        'error',
+      complexity: ["error", 11],
+      camelcase: "off",
+      "class-methods-use-this": "off",
+      "lines-between-class-members": "off",
+      "no-shadow": "off",
+      "no-use-before-define": "off",
+      "@typescript-eslint/no-unused-vars": "error",
+      "@typescript-eslint/no-use-before-define": "off",
+      "@typescript-eslint/explicit-module-boundary-types": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/no-namespace": "off",
+      "@typescript-eslint/naming-convention": [
+        "error",
         {
-          selector: 'method',
-          format: ['camelCase'],
+          selector: "method",
+          format: ["camelCase"],
         },
         {
-          selector: 'class',
-          format: ['PascalCase'],
+          selector: "class",
+          format: ["PascalCase"],
         },
       ],
 
-      'prettier/prettier': [
-        'error',
+      "prettier/prettier": [
+        "error",
         {
           printWidth: 100,
           tabWidth: 2,
-          trailingComma: 'all',
+          trailingComma: "all",
           bracketSpacing: true,
           singleQuote: true,
           semi: true,

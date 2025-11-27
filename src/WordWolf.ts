@@ -23,8 +23,8 @@ import {
   ButtonStyle,
 } from 'discord.js';
 import * as path from 'path';
-import { buildEmbed, buildTimeEmbed, makeButtonRow } from './utils';
-import { themes } from './themes';
+import { buildEmbed, buildTimeEmbed, makeButtonRow, shuffle } from './utils';
+import { Theme } from './db/Theme';
 
 type Message = OmitPartialGroupDMChannel<DiscordMessage<boolean>>;
 
@@ -53,6 +53,7 @@ export class WordWolf {
   private status: 'beforeDebating' | 'debating' | 'voting' | 'result' = 'beforeDebating';
   private memberIds: string[] = [];
   private winningCount: { [discordId in string]: number } = {};
+  private themes: [string, string][] = [];
   private themeIndex = 0;
   private wolfWordIndex = 0;
   private memberWordIndex: { [discordId in string]: number } = {}; // number is 0 or 1 (index)
@@ -90,10 +91,18 @@ export class WordWolf {
         resolve();
       });
     });
+    await this.fetchThemes();
     const components = [makeButtonRow('start10', 'start60', 'start180', 'start300', 'start600')];
     interaction.reply({ content: '議論時間を選んでスタートしちゃお', components, flags });
     this.channel.send('ワードウルフに参加したくない人はミュートにしておいてください');
     await this.talk('join');
+  }
+
+  private async fetchThemes() {
+    const themes = await Theme.findMany({
+      guildId: { $in: [null, this.channel.guildId] },
+    });
+    this.themes = shuffle(themes.map((theme) => theme.words));
   }
 
   public async destroy() {
@@ -181,7 +190,7 @@ export class WordWolf {
       const description = Object.entries(this.memberWordIndex)
         .map(([id, index]) => {
           const isWolf = index === this.wolfWordIndex;
-          const result = `${isWolf ? ':wolf:' : ':man:'} ${this.name(id)}: ${themes[this.themeIndex][index]}`;
+          const result = `${isWolf ? ':wolf:' : ':man:'} ${this.name(id)}: ${this.themes[this.themeIndex][index]}`;
           return isWolf ? `**${result}**` : result;
         })
         .join('\n');
@@ -189,7 +198,7 @@ export class WordWolf {
       return;
     }
     const title = `${this.name(interaction)}くんのワード`;
-    const word = themes[this.themeIndex][wordIndex];
+    const word = this.themes[this.themeIndex][wordIndex];
     await interaction.reply({ embeds: [buildEmbed(title, word)], flags });
   }
 
@@ -341,7 +350,7 @@ export class WordWolf {
     this.themeIndex += 1;
     if (interaction.isButton()) {
       const components =
-        this.themeIndex >= themes.length
+        this.themeIndex >= this.themes.length
           ? [makeButtonRow('finish')]
           : [makeButtonRow('continue', 'finish')];
       await this.channel.send({ embeds });
@@ -372,7 +381,7 @@ export class WordWolf {
     const description = `**${isWolfWin ? '人狼' : '市民'}**の勝ち！`;
     const counts = Object.entries(voteResult).map(([id, count]) => {
       const isWolf = this.memberWordIndex[id] === this.wolfWordIndex;
-      const word = themes[this.themeIndex][this.memberWordIndex[id]];
+      const word = this.themes[this.themeIndex][this.memberWordIndex[id]];
       const result = `${isWolf ? ':wolf:' : ':man:'} ${this.name(id)}【${word}】: ${count}`;
       return isWolf ? `**${result}**` : result;
     });
@@ -402,7 +411,7 @@ export class WordWolf {
       await interaction.reply({ content: '今はそのときじゃないねえ', flags });
       return;
     }
-    if (this.themeIndex >= themes.length) {
+    if (this.themeIndex >= this.themes.length) {
       await interaction.reply({ content: 'もうお題尽きちゃった', flags });
       return;
     }

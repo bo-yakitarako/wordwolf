@@ -1,4 +1,9 @@
-export const themes: [string, string][] = [
+import { config } from 'dotenv';
+import { Theme } from './db/Theme';
+
+config();
+
+const themes: [string, string][] = [
   ['GBA', '3DS'],
   ['宝鍾マリン', '星街すいせい'],
   ['走れメロス', '吾輩は猫である'],
@@ -7,7 +12,6 @@ export const themes: [string, string][] = [
   ['ハゲ', 'デブ'],
   ['警視庁', '交番'],
   ['ケーキ', 'シュークリーム'],
-  ['みずも', 'まりも'],
   ['CCレモン', '三ツ矢サイダー'],
   ['ジャングルジム', 'すべり台'],
   ['銀', '銅'],
@@ -22,3 +26,10 @@ export const themes: [string, string][] = [
   ['安倍晋三', '石破茂'],
   ['カバ', 'サイ'],
 ];
+
+(async () => {
+  const guildId = null;
+  const authorId = process.env.DISCORD_AUTHOR_ID as string;
+  const additions = themes.map<Theme.Data>((words) => ({ words, guildId, authorId }));
+  await Theme.createMany(additions);
+})();
