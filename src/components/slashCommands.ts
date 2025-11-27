@@ -12,6 +12,11 @@ const registration = {
   wordwolf: {
     data: new SlashCommandBuilder().setName('wordwolf').setDescription('すんごいモフモフです'),
     execute: async (interaction: ChatInputCommandInteraction) => {
+      const channel = interaction.channel as VoiceChannel;
+      if (!channel.members.some((m) => m.user.id === interaction.user.id)) {
+        await interaction.reply({ content: '接続せずにチャットだけ打つなんて姑息なやつめ', flags });
+        return;
+      }
       if (game.get(interaction) !== null) {
         await interaction.reply({ content: 'もういるよー', flags });
         return;
