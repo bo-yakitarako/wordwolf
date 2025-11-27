@@ -8,7 +8,7 @@
         "dev": "nodemon -L",
         "lint": "eslint --fix **/*.ts",
         "build": "esbuild src/main.ts --bundle --minify --platform=node --outfile=dist/index.js --external:discord.js --external:@discordjs/voice --external:@snazzah/davey --external:mongodb --external:dayjs --external:dotenv --external:path",
-        "build:seed": "esbuild src/seed.ts --bundle --minify --platform=node --outfile=dist/seed.js --external:mongodb --external:dayjs",
+        "build:seed": "esbuild src/seed.ts --bundle --minify --platform=node --outfile=dist/seed.js --external:dotenv --external:mongodb --external:dayjs",
         "seed": "pnpm build:seed && node ./dist/seed.js"
     },
     "author": "bo-yakitarako",
