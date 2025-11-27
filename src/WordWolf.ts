@@ -176,8 +176,20 @@ export class WordWolf {
   }
 
   public async checkWord(interaction: ButtonInteraction) {
+    const wordIndex: number | null = this.memberWordIndex[interaction.user.id] ?? null;
+    if (wordIndex === null) {
+      const description = Object.entries(this.memberWordIndex)
+        .map(([id, index]) => {
+          const isWolf = index === this.wolfWordIndex;
+          const result = `${isWolf ? ':wolf:' : ':man:'} ${this.name(id)}: ${themes[this.themeIndex][index]}`;
+          return isWolf ? `**${result}**` : result;
+        })
+        .join('\n');
+      await interaction.reply({ embeds: [buildEmbed('みんなのワード一覧', description)], flags });
+      return;
+    }
     const title = `${this.name(interaction)}くんのワード`;
-    const word = themes[this.themeIndex][this.memberWordIndex[interaction.user.id]];
+    const word = themes[this.themeIndex][wordIndex];
     await interaction.reply({ embeds: [buildEmbed(title, word)], flags });
   }
 
@@ -294,6 +306,10 @@ export class WordWolf {
   }
 
   public async vote(interaction: ButtonInteraction, targetId: string) {
+    if (!this.memberIds.includes(interaction.user.id)) {
+      await interaction.reply({ content: '外野はだまっとれ', flags });
+      return;
+    }
     this.votes[interaction.user.id] = targetId;
     const content = `${this.name(targetId)}くんに投票したよ`;
     const components = interaction.user.id === this.parentId ? [makeButtonRow('result')] : [];
