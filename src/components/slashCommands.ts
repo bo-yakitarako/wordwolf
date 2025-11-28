@@ -37,6 +37,12 @@ const registration = {
       await wordWolf.start(interaction, time);
     },
   },
+  skip: {
+    data: new SlashCommandBuilder().setName('skip').setDescription('こんなお題やめだやめだ次次'),
+    execute: async (interaction: ChatInputCommandInteraction, wordWolf: WordWolf) => {
+      await wordWolf.skip(interaction);
+    },
+  },
   result: {
     data: new SlashCommandBuilder().setName('result').setDescription('投票が終わった時にやるやつ'),
     execute: async (interaction: ChatInputCommandInteraction, wordWolf: WordWolf) => {

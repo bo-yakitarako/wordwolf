@@ -21,6 +21,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  InteractionResponse,
 } from 'discord.js';
 import * as path from 'path';
 import { buildEmbed, buildTimeEmbed, makeButtonRow, shuffle } from './utils';
@@ -55,8 +56,11 @@ export class WordWolf {
   private winningCount: { [discordId in string]: number } = {};
   private themes: [string, string][] = [];
   private themeIndex = 0;
+  private debateTime = 0;
   private wolfWordIndex = 0;
   private memberWordIndex: { [discordId in string]: number } = {}; // number is 0 or 1 (index)
+  private timeMessage: InteractionResponse<boolean> | null = null;
+  private timeInterval: NodeJS.Timeout | null = null;
   private questionAcceptedIds: string[] = [];
   private quesions: { [discordId in string]: string } = {};
   private questionMessages: Message[] = [];
@@ -106,12 +110,22 @@ export class WordWolf {
   }
 
   public async destroy() {
+    if (this.timeInterval !== null) {
+      clearInterval(this.timeInterval!);
+    }
+    try {
+      await this.timeMessage?.delete();
+    } catch {
+      throw new Error('なに削除失敗してんねんアホ');
+    } finally {
+      this.timeMessage = null;
+    }
     await this.toggleMute(false);
     this.player.stop();
     this.connection.destroy();
   }
 
-  public async start(interaction: RepliableInteraction, time: number) {
+  public async start(interaction: RepliableInteraction, time?: number) {
     if (interaction.user.id !== this.parentId) {
       await interaction.reply({ content: 'おめえにその権利ねえから！', flags });
       return;
@@ -145,7 +159,10 @@ export class WordWolf {
       await this.talk('under');
       return;
     }
-    this.memberIds = [...ids];
+    if (time !== undefined) {
+      this.debateTime = time;
+      this.memberIds = [...ids];
+    }
     await this.toggleMute(false);
     this.wolfWordIndex = Math.floor(2 * Math.random());
     const generalWordIndex = this.wolfWordIndex === 0 ? 1 : 0;
@@ -153,10 +170,10 @@ export class WordWolf {
     ids.forEach((id, index) => {
       this.memberWordIndex[id] = index === wolfPlayerIndex ? this.wolfWordIndex : generalWordIndex;
     });
-    await this.debate(interaction, time);
+    await this.debate(interaction);
   }
 
-  private async debate(interaction: RepliableInteraction, time: number) {
+  private async debate(interaction: RepliableInteraction) {
     this.status = 'debating';
     this.questionAcceptedIds = [];
     this.quesions = {};
@@ -164,24 +181,62 @@ export class WordWolf {
     this.answers = {};
     this.votes = {};
     const components = [makeButtonRow('word', 'question')];
-    await interaction.reply({ components, embeds: [buildTimeEmbed(time)] });
+    const embeds = [buildTimeEmbed(this.debateTime)];
+    this.timeMessage = await interaction.reply({ components, embeds });
     this.talk('start');
-    let remainingTime = time;
-    await new Promise<void>((resolve) => {
-      const interval = setInterval(() => {
-        remainingTime -= 1;
-        interaction.editReply({ components, embeds: [buildTimeEmbed(remainingTime)] });
-        if ([10, 30, 60, 120, 180, 300].includes(remainingTime)) {
-          this.talk(`${remainingTime}`);
-        }
-        if (remainingTime <= 0) {
-          this.talk('debateFinish');
-          clearInterval(interval);
-          resolve();
+    let remainingTime = this.debateTime;
+    await new Promise<void>((resolve, reject) => {
+      this.timeInterval = setInterval(() => {
+        try {
+          remainingTime -= 1;
+          interaction
+            .editReply({ components, embeds: [buildTimeEmbed(remainingTime)] })
+            .catch((e) => reject(e));
+          if ([10, 30, 60, 120, 180, 300].includes(remainingTime)) {
+            this.talk(`${remainingTime}`).catch((e) => reject(e));
+          }
+          if (remainingTime <= 0) {
+            this.talk('debateFinish').catch((e) => reject(e));
+            clearInterval(this.timeInterval!);
+            this.timeInterval = null;
+            resolve();
+          }
+        } catch (error) {
+          reject(error);
         }
       }, 1000);
     });
     await this.readyToVoting(interaction);
+  }
+
+  public async skip(interaction: RepliableInteraction) {
+    if (interaction.user.id !== this.parentId) {
+      await interaction.reply({ content: 'おめえじゃ役不足だな。出直してきな', flags });
+      return;
+    }
+    if (this.status !== 'debating') {
+      await interaction.reply({ content: '今はそのときじゃないねえ', flags });
+      return;
+    }
+    if (this.timeInterval !== null) {
+      clearInterval(this.timeInterval!);
+      this.timeInterval = null;
+    }
+    try {
+      await this.timeMessage?.delete();
+    } catch {
+      throw new Error('なに削除失敗してんねんアホ');
+    } finally {
+      this.timeMessage = null;
+    }
+    this.themeIndex += 1;
+    if (this.themeIndex >= this.themes.length) {
+      this.status = 'result';
+      await this.finish(interaction);
+    } else {
+      this.status = 'beforeDebating';
+      await this.start(interaction);
+    }
   }
 
   public async checkWord(interaction: ButtonInteraction) {

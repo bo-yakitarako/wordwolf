@@ -28,7 +28,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await buttonInteraction(interaction);
     }
   } catch (error) {
-    console.error(error);
+    console.log(error);
+    if (interaction.isRepliable()) {
+      const content = 'エラったァァァァァイヤァァァァ\n一旦もっかいやってみよ？';
+      await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+    }
   }
 });
 
@@ -40,7 +44,7 @@ client.on(Events.MessageCreate, async (message) => {
     }
     await wordWolf.sendQuestion(message);
   } catch (error) {
-    console.error(error);
+    console.log(error);
   }
 });
 
