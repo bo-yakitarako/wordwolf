@@ -291,10 +291,10 @@ export class WordWolf {
   public async sendQuestion(message: Message) {
     const id = message.author.id;
     this.quesions[message.author.id] = message.content;
-    const answerButtons = [0, 1, 2].map((answerIndex) =>
+    const answerButtons = answerLabels.map((label, index) =>
       new ButtonBuilder()
-        .setCustomId(`answer-${id}-${answerIndex}`)
-        .setLabel(answerLabels[answerIndex])
+        .setCustomId(`answer-${id}-${index}`)
+        .setLabel(label)
         .setStyle(ButtonStyle.Primary),
     );
     const answerComponents = new ActionRowBuilder<ButtonBuilder>().addComponents(answerButtons);
@@ -397,9 +397,17 @@ export class WordWolf {
     }
     this.status = 'result';
     this.toggleMute(false);
-    this.voteMessage?.delete();
+    try {
+      await this.voteMessage?.delete();
+    } catch {
+      throw new Error('なに削除失敗してんねんアホ');
+    } finally {
+      this.voteMessage = null;
+    }
     this.talk('result');
-    Promise.all(this.questionMessages.map((m) => m.delete()));
+    Promise.all(this.questionMessages.map((m) => m.delete())).finally(() => {
+      this.questionMessages = [];
+    });
     const qEmbeds = Object.keys(this.quesions).map((id) => this.buildQuestionResultEmbed(id));
     const embeds = [...qEmbeds, this.buildResultEmbed()];
     this.themeIndex += 1;
