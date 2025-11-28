@@ -1,6 +1,5 @@
 import { Model } from './Model';
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace Theme {
   export type Data = {
     words: [string, string];
