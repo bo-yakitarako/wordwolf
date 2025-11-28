@@ -20,26 +20,28 @@ client.once(Events.ClientReady, () => {
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
-  if (interaction.guild === null) {
-    if (interaction.isRepliable()) {
-      await interaction.reply({ content: 'なに？', flags: MessageFlags.Ephemeral });
+  try {
+    if (interaction.isChatInputCommand()) {
+      await slashCommandsInteraction(interaction);
     }
-    return;
-  }
-  if (interaction.isChatInputCommand()) {
-    await slashCommandsInteraction(interaction);
-  }
-  if (interaction.isButton()) {
-    await buttonInteraction(interaction);
+    if (interaction.isButton()) {
+      await buttonInteraction(interaction);
+    }
+  } catch (error) {
+    console.error(error);
   }
 });
 
 client.on(Events.MessageCreate, async (message) => {
-  const wordWolf = game.get(message);
-  if (message.author.bot || wordWolf === null || !wordWolf.isQuestionReady(message)) {
-    return;
+  try {
+    const wordWolf = game.get(message);
+    if (message.author.bot || wordWolf === null || !wordWolf.isQuestionReady(message)) {
+      return;
+    }
+    await wordWolf.sendQuestion(message);
+  } catch (error) {
+    console.error(error);
   }
-  await wordWolf.sendQuestion(message);
 });
 
 const TOKEN = process.env.TOKEN as string;
