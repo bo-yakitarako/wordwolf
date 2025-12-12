@@ -1,6 +1,7 @@
 import { ButtonBuilder, ButtonInteraction, ButtonStyle, MessageFlags } from 'discord.js';
 import { game, WordWolf } from '../WordWolf';
 import { timeTitle } from '../utils';
+import { manageFinishInteraction, confirmButtonInteraction } from '../wordsManagement';
 
 const flags = MessageFlags.Ephemeral;
 
@@ -55,6 +56,42 @@ const registration = {
       await wordWolf.finish(interaction);
     },
   },
+  manageYes: {
+    component: new ButtonBuilder()
+      .setCustomId('manageYes')
+      .setLabel('はい')
+      .setStyle(ButtonStyle.Primary),
+    async execute(interaction: ButtonInteraction) {
+      await confirmButtonInteraction(interaction, true);
+    },
+  },
+  manageNo: {
+    component: new ButtonBuilder()
+      .setCustomId('manageNo')
+      .setLabel('やり直す')
+      .setStyle(ButtonStyle.Secondary),
+    async execute(interaction: ButtonInteraction) {
+      await confirmButtonInteraction(interaction, false);
+    },
+  },
+  manageContinue: {
+    component: new ButtonBuilder()
+      .setCustomId('manageContinue')
+      .setLabel('更にワードを追加する')
+      .setStyle(ButtonStyle.Primary),
+    async execute(interaction: ButtonInteraction) {
+      await manageFinishInteraction(interaction, false);
+    },
+  },
+  manageFinish: {
+    component: new ButtonBuilder()
+      .setCustomId('manageFinish')
+      .setLabel('終わる')
+      .setStyle(ButtonStyle.Secondary),
+    async execute(interaction: ButtonInteraction) {
+      await manageFinishInteraction(interaction, true);
+    },
+  },
 };
 
 function generateStartButton(time: number) {
@@ -75,13 +112,20 @@ export const button = Object.fromEntries(
   (Object.keys(registration) as CustomId[]).map((id) => [id, registration[id].component] as const),
 ) as { [key in CustomId]: ButtonBuilder };
 
+const manageButtonIds = ['manageYes', 'manageNo', 'manageContinue', 'manageFinish'] as const;
+
 export const buttonInteraction = async (interaction: ButtonInteraction) => {
+  const customId = interaction.customId as CustomId;
+  if (manageButtonIds.includes(customId as (typeof manageButtonIds)[number])) {
+    await registration[customId].execute(interaction, null as unknown as WordWolf);
+    return;
+  }
+
   const wordWolf = game.get(interaction);
   if (wordWolf === null) {
     await interaction.reply({ content: '`/wordwolf`しようね', flags });
     return;
   }
-  const customId = interaction.customId as CustomId;
   const [action, ...params] = customId.split('-');
   if (['answer', 'questionResult', 'vote'].includes(action)) {
     if (action === 'answer') {

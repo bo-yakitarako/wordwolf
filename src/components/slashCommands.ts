@@ -5,10 +5,15 @@ import {
   VoiceChannel,
 } from 'discord.js';
 import { game, WordWolf } from '../WordWolf';
+import { manageWordsInteraction } from '../wordsManagement';
 
 const flags = MessageFlags.Ephemeral;
 
 const registration = {
+  manage: {
+    data: new SlashCommandBuilder().setName('manage').setDescription('ワードを管理する'),
+    execute: manageWordsInteraction,
+  },
   wordwolf: {
     data: new SlashCommandBuilder().setName('wordwolf').setDescription('すんごいモフモフです'),
     execute: async (interaction: ChatInputCommandInteraction) => {
@@ -75,11 +80,19 @@ type CommandName = keyof typeof registration;
 
 export const commands = Object.values(registration).map(({ data }) => data.toJSON());
 export const slashCommandsInteraction = async (interaction: ChatInputCommandInteraction) => {
+  const commandName = interaction.commandName as CommandName;
+  if (commandName === 'manage') {
+    if (interaction.guild === null) {
+      await interaction.reply({ content: 'なんのサーバーこれ？', flags });
+      return;
+    }
+    await registration.manage.execute(interaction);
+    return;
+  }
   if (!(interaction.channel instanceof VoiceChannel)) {
     await interaction.reply({ content: 'ほ？', flags });
     return;
   }
-  const commandName = interaction.commandName as CommandName;
   const wordWolf = game.get(interaction);
   if (commandName !== 'wordwolf' && wordWolf === null) {
     await interaction.reply({ content: 'おらんがな', flags });

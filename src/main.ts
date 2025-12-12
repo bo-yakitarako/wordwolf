@@ -1,8 +1,17 @@
-import { Client, GatewayIntentBits, Events, REST, Routes, MessageFlags } from 'discord.js';
+import {
+  Client,
+  GatewayIntentBits,
+  Events,
+  REST,
+  Routes,
+  MessageFlags,
+  Partials,
+} from 'discord.js';
 import { config } from 'dotenv';
 import { commands, slashCommandsInteraction } from './components/slashCommands';
 import { buttonInteraction } from './components/buttons';
 import { game } from './WordWolf';
+import { isManager, receiveWord } from './wordsManagement';
 
 config();
 
@@ -12,7 +21,9 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.DirectMessages,
   ],
+  partials: [Partials.Channel, Partials.Message],
 });
 
 client.once(Events.ClientReady, () => {
@@ -37,9 +48,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 client.on(Events.MessageCreate, async (message) => {
+  if (message.author.bot) {
+    return;
+  }
+  if (message.channel.isDMBased()) {
+    if (!isManager(message)) {
+      await message.reply(
+        'ワード追加したいんならDMじゃなくてサーバーのどこかで```/word```して指示に従おうね',
+      );
+      return;
+    }
+    await receiveWord(message);
+    return;
+  }
   try {
     const wordWolf = game.get(message);
-    if (message.author.bot || wordWolf === null || !wordWolf.isQuestionReady(message)) {
+    if (wordWolf === null || !wordWolf.isQuestionReady(message)) {
       return;
     }
     await wordWolf.sendQuestion(message);
