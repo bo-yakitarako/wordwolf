@@ -55,6 +55,10 @@ export const receiveWord = async (message: Message) => {
 export const confirmButtonInteraction = async (interaction: ButtonInteraction, yes = true) => {
   const discordId = interaction.user.id;
   const guildId = manager[discordId] ?? null;
+  if (!guildId) {
+    await interaction.deferUpdate();
+    return;
+  }
 
   if (yes) {
     const userWords = words[discordId];
@@ -74,6 +78,10 @@ export const confirmButtonInteraction = async (interaction: ButtonInteraction, y
 
 export const manageFinishInteraction = async (interaction: ButtonInteraction, finish = true) => {
   const discordId = interaction.user.id;
+  if (!(discordId in manager)) {
+    await interaction.deferUpdate();
+    return;
+  }
   delete words[discordId];
   if (finish) {
     delete manager[discordId];
