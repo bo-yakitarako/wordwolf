@@ -1,0 +1,11 @@
+services:
+  wordwolf-bot:
+    build: .
+    container_name: wordwolf-bot
+    restart: always
+    environment:
+      TOKEN: ${TOKEN}
+      CLIENT_ID: ${CLIENT_ID}
+      MONGO_URI: ${MONGO_URI}
+      DB_NAME: ${DB_NAME}
+      DISCORD_AUTHOR_ID: ${DISCORD_AUTHOR_ID}
