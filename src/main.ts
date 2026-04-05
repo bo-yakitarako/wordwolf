@@ -7,13 +7,10 @@ import {
   MessageFlags,
   Partials,
 } from 'discord.js';
-import { config } from 'dotenv';
 import { commands, slashCommandsInteraction } from './components/slashCommands';
 import { buttonInteraction } from './components/buttons';
 import { game } from './WordWolf';
 import { isManager, receiveWord } from './wordsManagement';
-
-config();
 
 const client = new Client({
   intents: [

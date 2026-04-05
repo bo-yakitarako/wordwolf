@@ -1,5 +1,4 @@
 import dayjs from 'dayjs';
-import { config } from 'dotenv';
 import {
   Collection,
   Document,
@@ -8,8 +7,6 @@ import {
   OptionalUnlessRequiredId,
   WithId,
 } from 'mongodb';
-
-config();
 
 type BasePropsWithoutId = { createdAt: number; updatedAt: number };
 export type BaseProps = WithId<BasePropsWithoutId>;

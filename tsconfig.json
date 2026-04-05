@@ -1,15 +1,16 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ESNext",
     "useDefineForClassFields": true,
-    "module": "CommonJS",
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "lib": ["ESNext"],
     "skipLibCheck": true,
     "esModuleInterop": true,
 
     /* Bundler mode */
     "moduleResolution": "node",
     "allowImportingTsExtensions": true,
+    "types": ["bun-types"],
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
@@ -21,8 +22,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"],
-  "ts-node": {
-    "transpileOnly": true
-  }
+  "include": ["src"]
 }

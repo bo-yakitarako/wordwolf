@@ -1,7 +1,4 @@
-import { config } from 'dotenv';
 import { Theme } from './db/Theme';
-
-config();
 
 const themes: [string, string][] = [
   ['GBA', '3DS'],

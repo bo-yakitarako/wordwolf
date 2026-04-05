@@ -1,40 +1,30 @@
 {
-    "name": "wordwolf",
-    "version": "1.0.0",
-    "description": "語狼ってなんかダサいな",
-    "main": "dist/index.js",
-    "scripts": {
-        "start": "node ./dist/index.js",
-        "dev": "nodemon -L",
-        "lint": "eslint --fix **/*.ts",
-        "build": "esbuild src/main.ts --bundle --minify --platform=node --outfile=dist/index.js --external:discord.js --external:@discordjs/voice --external:@snazzah/davey --external:mongodb --external:dayjs --external:dotenv --external:path",
-        "build:seed": "esbuild src/seed.ts --bundle --minify --platform=node --outfile=dist/seed.js --external:dotenv --external:mongodb --external:dayjs",
-        "seed": "pnpm build:seed && node ./dist/seed.js"
-    },
-    "author": "bo-yakitarako",
-    "license": "MIT",
-    "devDependencies": {
-        "@eslint/eslintrc": "^3.3.1",
-        "@eslint/js": "^9.39.1",
-        "@typescript-eslint/eslint-plugin": "^8.46.4",
-        "@typescript-eslint/parser": "^8.46.4",
-        "esbuild": "^0.25.12",
-        "eslint": "^9.39.1",
-        "eslint-config-prettier": "^10.1.8",
-        "eslint-plugin-prettier": "^5.5.4",
-        "globals": "^16.5.0",
-        "nodemon": "^3.1.10",
-        "prettier": "^3.6.2",
-        "ts-node": "^10.9.2",
-        "typescript": "^5.9.3",
-        "typescript-eslint": "^8.46.4"
-    },
-    "dependencies": {
-        "@discordjs/voice": "^0.19.0",
-        "@snazzah/davey": "^0.1.7",
-        "dayjs": "^1.11.19",
-        "discord.js": "^14.24.2",
-        "dotenv": "^17.2.3",
-        "mongodb": "^7.0.0"
-    }
+  "name": "wordwolf",
+  "version": "1.0.0",
+  "description": "語狼ってなんかダサいな",
+  "main": "dist/index.js",
+  "scripts": {
+    "start": "dotenvx run -- bun dist/index.js",
+    "dev": "dotenvx run -- bun run --watch src/main.ts",
+    "delete": "dotenvx run -- bun src/commandDelete.ts",
+    "seed": "dotenvx run -- bun src/seed.ts",
+    "lint": "oxlint --fix && oxfmt --write src",
+    "build": "bun build src/main.ts --target bun --minify --outfile dist/index.js --external discord.js --external @discordjs/voice --external @snazzah/davey --external mongodb --external dayjs",
+    "decrypt": "dotenvx decrypt",
+    "encrypt": "dotenvx encrypt"
+  },
+  "author": "bo-yakitarako",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "oxfmt": "latest",
+    "oxlint": "latest"
+  },
+  "dependencies": {
+    "@discordjs/voice": "^0.19.0",
+    "@snazzah/davey": "^0.1.7",
+    "dayjs": "^1.11.19",
+    "discord.js": "^14.24.2",
+    "mongodb": "^7.0.0"
+  }
 }

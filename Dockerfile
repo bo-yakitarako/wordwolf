@@ -1,14 +1,13 @@
-FROM node:23-alpine AS build
+FROM oven/bun:latest AS base
 
-RUN apk add --no-cache tzdata && \
+RUN apt-get update && apt-get install -y tzdata && \
   cp /usr/share/zoneinfo/Asia/Tokyo /etc/localtime && \
-  echo "Asia/Tokyo" > /etc/timezone
-
-RUN corepack enable && corepack prepare pnpm@latest --activate
+  echo "Asia/Tokyo" > /etc/timezone && \
+  rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 COPY . .
-RUN pnpm install --frozen-lockfile && pnpm build
+RUN bun install --frozen-lockfile
 
-CMD ["node", "dist/index.js"]
+CMD ["bun", "src/main.ts"]
