@@ -25,6 +25,7 @@ const themes: [string, string][] = [
 ];
 
 (async () => {
+  await Theme.deleteMany();
   const guildId = null;
   const authorId = process.env.DISCORD_AUTHOR_ID as string;
   const additions = themes.map<Theme.Data>((words) => ({ words, guildId, authorId }));

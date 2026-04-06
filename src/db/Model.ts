@@ -120,6 +120,15 @@ export class Model<T extends Document = Document> {
       await collection.deleteOne({ _id: this.id } as Filter<BaseProps & T>);
     });
   }
+
+  public static async deleteMany<T extends Document, C extends Model<T>>(
+    this: ModelClass<C, T>,
+    query: Filter<BaseProps & T> = {} as Filter<BaseProps & T>,
+  ): Promise<void> {
+    await connect<BaseProps & T, void>(this.collectionName, async (collection) => {
+      await collection.deleteMany(query);
+    });
+  }
 }
 
 async function connect<T extends Document, K>(
