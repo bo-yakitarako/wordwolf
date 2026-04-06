@@ -83,18 +83,7 @@ export class WordWolf {
   }
 
   public async join(interaction: RepliableInteraction) {
-    await new Promise<void>((resolve) => {
-      const interval = setInterval(() => {
-        if (this.connection.state.status === VoiceConnectionStatus.Ready) {
-          clearInterval(interval);
-          resolve();
-        }
-      }, 100);
-      this.connection.once(VoiceConnectionStatus.Ready, () => {
-        clearInterval(interval);
-        resolve();
-      });
-    });
+    await entersState(this.connection, VoiceConnectionStatus.Ready, 30_000);
     await this.fetchThemes();
     const components = [makeButtonRow('start10', 'start60', 'start180', 'start300', 'start600')];
     interaction.reply({ content: '議論時間を選んでスタートしちゃお', components, flags });
