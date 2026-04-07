@@ -6,8 +6,9 @@ import {
   MessageFlags,
   ChatInputCommandInteraction,
 } from 'discord.js';
-import { buildEmbed, makeButtonRow } from './utils';
+import { buildEmbed } from './utils';
 import { Theme } from './db/Theme';
+import { makeButtonRow } from './components/buttons';
 
 const flags = MessageFlags.Ephemeral;
 const manager: { [discordId in string]: string } = {};

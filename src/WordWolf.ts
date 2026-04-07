@@ -18,14 +18,12 @@ import {
   RepliableInteraction,
   VoiceChannel,
   Message as DiscordMessage,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
   InteractionResponse,
 } from 'discord.js';
 import * as path from 'path';
-import { buildEmbed, buildTimeEmbed, makeButtonRow, shuffle } from './utils';
+import { buildEmbed, buildTimeEmbed, shuffle } from './utils';
 import { Theme } from './db/Theme';
+import { ButtonInfoArg, makeButtonRow } from './components/buttons';
 
 type Message = OmitPartialGroupDMChannel<DiscordMessage<boolean>>;
 
@@ -52,7 +50,8 @@ export class WordWolf {
   private connection: VoiceConnection;
   private player: AudioPlayer;
   private status: 'beforeDebating' | 'debating' | 'voting' | 'result' = 'beforeDebating';
-  private memberIds: string[] = [];
+  private attendee: { [id in string]: string } = {};
+  private attendeeIds: string[] = [];
   private winningCount: { [discordId in string]: number } = {};
   private themes: [string, string][] = [];
   private themeIndex = 0;
@@ -85,7 +84,8 @@ export class WordWolf {
   public async join(interaction: RepliableInteraction) {
     await entersState(this.connection, VoiceConnectionStatus.Ready, 30_000);
     await this.fetchThemes();
-    const components = [makeButtonRow('start10', 'start60', 'start180', 'start300', 'start600')];
+    const buttons = [10, 60, 180, 300, 600].map<ButtonInfoArg>((time) => ['start', time]);
+    const components = [makeButtonRow(...buttons)];
     interaction.reply({ content: '議論時間を選んでスタートしちゃお', components, flags });
     this.channel.send('ワードウルフに参加したくない人はミュートにしておいてください');
     await this.talk('join');
@@ -123,10 +123,10 @@ export class WordWolf {
       await interaction.reply({ content: '今やっとるやんけ', flags });
       return;
     }
-    const ids = this.channel.members
+    const players = this.channel.members
       .filter((m) => !m.user.bot && !m.voice.selfMute)
-      .map((m) => m.user.id);
-    if (ids.length > 8) {
+      .map((m) => [m.user.id, m.displayName]);
+    if (players.length > 8) {
       const content = '8人までで頼むよー誰かミュートしてー';
       if (interaction.isButton()) {
         await interaction.deferUpdate();
@@ -137,7 +137,7 @@ export class WordWolf {
       await this.talk('over');
       return;
     }
-    if (ids.length < 3) {
+    if (players.length < 3) {
       const content = 'せめて3人は必要なんじゃない？';
       if (interaction.isButton()) {
         await interaction.deferUpdate();
@@ -150,13 +150,14 @@ export class WordWolf {
     }
     if (time !== undefined) {
       this.debateTime = time;
-      this.memberIds = [...ids];
+      this.attendee = Object.fromEntries(players);
+      this.attendeeIds = Object.keys(this.attendee);
     }
     await this.toggleMute(false);
     this.wolfWordIndex = Math.floor(2 * Math.random());
     const generalWordIndex = this.wolfWordIndex === 0 ? 1 : 0;
-    const wolfPlayerIndex = Math.floor(ids.length * Math.random());
-    ids.forEach((id, index) => {
+    const wolfPlayerIndex = Math.floor(players.length * Math.random());
+    players.forEach(([id], index) => {
       this.memberWordIndex[id] = index === wolfPlayerIndex ? this.wolfWordIndex : generalWordIndex;
     });
     await this.debate(interaction);
@@ -234,20 +235,20 @@ export class WordWolf {
       const description = Object.entries(this.memberWordIndex)
         .map(([id, index]) => {
           const isWolf = index === this.wolfWordIndex;
-          const result = `${isWolf ? ':wolf:' : ':man:'} ${this.name(id)}: ${this.themes[this.themeIndex][index]}`;
+          const result = `${isWolf ? ':wolf:' : ':man:'} ${this.attendee[id]}: ${this.themes[this.themeIndex][index]}`;
           return isWolf ? `**${result}**` : result;
         })
         .join('\n');
       await interaction.reply({ embeds: [buildEmbed('みんなのワード一覧', description)], flags });
       return;
     }
-    const title = `${this.name(interaction)}くんのワード`;
+    const title = `${this.attendee[interaction.user.id]}くんのワード`;
     const word = this.themes[this.themeIndex][wordIndex];
     await interaction.reply({ embeds: [buildEmbed(title, word)], flags });
   }
 
   public async prepareQuestion(interaction: ButtonInteraction) {
-    if (!this.memberIds.includes(interaction.user.id)) {
+    if (!this.attendeeIds.includes(interaction.user.id)) {
       await interaction.reply({ content: 'どちら様でございますか？', flags });
       return;
     }
@@ -280,24 +281,17 @@ export class WordWolf {
   public async sendQuestion(message: Message) {
     const id = message.author.id;
     this.quesions[message.author.id] = message.content;
-    const answerButtons = answerLabels.map((label, index) =>
-      new ButtonBuilder()
-        .setCustomId(`answer-${id}-${index}`)
-        .setLabel(label)
-        .setStyle(ButtonStyle.Primary),
-    );
-    const answerComponents = new ActionRowBuilder<ButtonBuilder>().addComponents(answerButtons);
-    const resultButton = new ButtonBuilder()
-      .setCustomId(`questionResult-${id}`)
-      .setLabel('回答結果を表示')
-      .setStyle(ButtonStyle.Primary);
-    const resultComponents = new ActionRowBuilder<ButtonBuilder>().addComponents(resultButton);
-    const qMessage = await message.reply({ components: [answerComponents, resultComponents] });
+
+    const answerButtons = answerLabels.map<ButtonInfoArg>((label, index) => {
+      return ['answer', id, index, label];
+    });
+    const components = [makeButtonRow(...answerButtons), makeButtonRow(['questionResult', id])];
+    const qMessage = await message.reply({ components });
     this.questionMessages = [...this.questionMessages, qMessage];
   }
 
   public async answer(interaction: ButtonInteraction, authorId: string, answerIndex: number) {
-    if (!this.memberIds.includes(interaction.user.id)) {
+    if (!this.attendeeIds.includes(interaction.user.id)) {
       await interaction.reply({ content: 'あんただれー？', flags });
       return;
     }
@@ -316,7 +310,7 @@ export class WordWolf {
     }
     if (
       !(interaction.user.id in this.answers[authorId]) &&
-      this.memberIds.includes(interaction.user.id)
+      this.attendeeIds.includes(interaction.user.id)
     ) {
       await interaction.reply({ content: '回答しないと見れないからね？', flags });
       return;
@@ -325,12 +319,12 @@ export class WordWolf {
   }
 
   private buildQuestionResultEmbed(authorId: string) {
-    const title = `${this.name(authorId)}くんの質問の結果`;
-    const answerTexts = this.memberIds.map((id) => {
+    const title = `${this.attendee[authorId]}くんの質問の結果`;
+    const answerTexts = this.attendeeIds.map((id) => {
       if (!(id in this.answers[authorId])) {
-        return `${this.name(id)}くん: 未回答`;
+        return `${this.attendee[id]}くん: 未回答`;
       }
-      return `${this.name(id)}くん: ${answerLabels[this.answers[authorId][id]]}`;
+      return `${this.attendee[id]}くん: ${answerLabels[this.answers[authorId][id]]}`;
     });
     const resultField = { name: 'みんなの回答', value: answerTexts.join('\n'), inline: false };
     return buildEmbed(title, this.quesions[authorId], [resultField]);
@@ -345,26 +339,18 @@ export class WordWolf {
       ),
     );
     await interaction.deleteReply();
-    const buttons = this.memberIds.map((id) =>
-      new ButtonBuilder()
-        .setCustomId(`vote-${id}`)
-        .setLabel(this.name(id))
-        .setStyle(ButtonStyle.Primary),
-    );
-    const components = [
-      new ActionRowBuilder<ButtonBuilder>().addComponents(buttons),
-      makeButtonRow('word'),
-    ];
+    const buttons = this.attendeeIds.map<ButtonInfoArg>((id) => ['vote', id, this.attendee[id]]);
+    const components = [makeButtonRow(...buttons), makeButtonRow('word')];
     this.voteMessage = await this.channel.send({ content: '人狼だーれだ？', components });
   }
 
   public async vote(interaction: ButtonInteraction, targetId: string) {
-    if (!this.memberIds.includes(interaction.user.id)) {
+    if (!this.attendeeIds.includes(interaction.user.id)) {
       await interaction.reply({ content: '外野はだまっとれ', flags });
       return;
     }
     this.votes[interaction.user.id] = targetId;
-    const content = `${this.name(targetId)}くんに投票したよ`;
+    const content = `${this.attendee[targetId]}くんに投票したよ`;
     const components = interaction.user.id === this.parentId ? [makeButtonRow('result')] : [];
     await interaction.reply({ content, components, flags });
   }
@@ -378,9 +364,9 @@ export class WordWolf {
       await interaction.reply({ content: '変なときに結果見ようとしてんじゃないよ', flags });
       return;
     }
-    const unvotedIds = this.memberIds.filter((id) => !Object.keys(this.votes).includes(id));
+    const unvotedIds = this.attendeeIds.filter((id) => !Object.keys(this.votes).includes(id));
     if (unvotedIds.length > 0) {
-      const names = unvotedIds.map((id) => `${this.name(id)}くん`).join('と');
+      const names = unvotedIds.map((id) => `${this.attendee[id]}くん`).join('と');
       await interaction.reply({ content: `${names}が投票まだだよ`, flags });
       return;
     }
@@ -413,7 +399,7 @@ export class WordWolf {
   }
 
   private buildResultEmbed() {
-    const voteResult = Object.fromEntries(this.memberIds.map((id) => [id, 0]));
+    const voteResult = Object.fromEntries(this.attendeeIds.map((id) => [id, 0]));
     for (const voteId of Object.values(this.votes)) {
       voteResult[voteId] += 1;
     }
@@ -434,7 +420,7 @@ export class WordWolf {
     const counts = Object.entries(voteResult).map(([id, count]) => {
       const isWolf = this.memberWordIndex[id] === this.wolfWordIndex;
       const word = this.themes[this.themeIndex][this.memberWordIndex[id]];
-      const result = `${isWolf ? ':wolf:' : ':man:'} ${this.name(id)}【${word}】: ${count}`;
+      const result = `${isWolf ? ':wolf:' : ':man:'} ${this.attendee[id]}【${word}】: ${count}`;
       return isWolf ? `**${result}**` : result;
     });
     const countField = { name: '得票数', value: counts.join('\n'), inline: false };
@@ -444,7 +430,7 @@ export class WordWolf {
   private addWinningCount(isWolfWin: boolean) {
     const generalWordIndex = this.wolfWordIndex === 0 ? 1 : 0;
     const winningIndex = isWolfWin ? this.wolfWordIndex : generalWordIndex;
-    for (const id of this.memberIds) {
+    for (const id of this.attendeeIds) {
       if (!(id in this.winningCount)) {
         this.winningCount[id] = 0;
       }
@@ -468,7 +454,8 @@ export class WordWolf {
       return;
     }
     this.status = 'beforeDebating';
-    const components = [makeButtonRow('start10', 'start60', 'start180', 'start300', 'start600')];
+    const buttons = [10, 60, 180, 300, 600].map<ButtonInfoArg>((time) => ['start', time]);
+    const components = [makeButtonRow(...buttons)];
     await interaction.reply({ components, flags });
   }
 
@@ -484,7 +471,7 @@ export class WordWolf {
     const content = 'ばいばーい';
     const description = Object.entries(this.winningCount)
       .sort((a, b) => b[1] - a[1])
-      .map(([id, count], index) => `${index + 1}. ${this.name(id)}くん: ${count}`)
+      .map(([id, count], index) => `${index + 1}. ${this.attendee[id]}くん: ${count}`)
       .join('\n');
     const embeds = [buildEmbed('みんなの勝利数', description, 'success')];
     if (interaction.isButton()) {
@@ -510,13 +497,8 @@ export class WordWolf {
   private async toggleMute(mute: boolean) {
     await Promise.all(
       this.channel.members
-        .filter((m) => this.memberIds.includes(m.user.id))
+        .filter((m) => this.attendeeIds.includes(m.user.id))
         .map((m) => m.edit({ mute })),
     );
-  }
-
-  private name(identity: Interaction | string) {
-    const discordId = typeof identity === 'string' ? identity : identity.user.id;
-    return this.channel.guild.members.cache.get(discordId)?.displayName ?? '名無しの虚構';
   }
 }

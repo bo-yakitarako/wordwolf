@@ -135,6 +135,7 @@ async function connect<T extends Document, K>(
   collectionName: string,
   fn: (collection: Collection<T>) => Promise<K>,
 ): Promise<K> {
+  // eslint-disable-next-line no-async-promise-executor
   return new Promise(async (resolve, reject) => {
     const client = new MongoClient(process.env.MONGO_URI as string);
     try {

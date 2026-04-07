@@ -1,4 +1,10 @@
-import { ButtonBuilder, ButtonInteraction, ButtonStyle, MessageFlags } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonInteraction,
+  ButtonStyle,
+  MessageFlags,
+} from 'discord.js';
 import { game, WordWolf } from '../WordWolf';
 import { timeTitle } from '../utils';
 import { manageFinishInteraction, confirmButtonInteraction } from '../wordsManagement';
@@ -6,11 +12,16 @@ import { manageFinishInteraction, confirmButtonInteraction } from '../wordsManag
 const flags = MessageFlags.Ephemeral;
 
 const registration = {
-  start10: generateStartButton(10),
-  start60: generateStartButton(60),
-  start180: generateStartButton(180),
-  start300: generateStartButton(300),
-  start600: generateStartButton(600),
+  start: {
+    component: (time: number) =>
+      new ButtonBuilder()
+        .setCustomId(`start-${time}`)
+        .setLabel(timeTitle(time))
+        .setStyle(ButtonStyle.Primary),
+    async execute(interaction: ButtonInteraction, wordWolf: WordWolf, time: string) {
+      await wordWolf.start(interaction, Number(time));
+    },
+  },
   word: {
     component: new ButtonBuilder()
       .setCustomId('word')
@@ -27,6 +38,33 @@ const registration = {
       .setStyle(ButtonStyle.Secondary),
     async execute(interaction: ButtonInteraction, wordWolf: WordWolf) {
       await wordWolf.prepareQuestion(interaction);
+    },
+  },
+  answer: {
+    component: (id: string, index: number, label: string) =>
+      new ButtonBuilder()
+        .setCustomId(`answer-${id}-${index}`)
+        .setLabel(label)
+        .setStyle(ButtonStyle.Primary),
+    async execute(interaction: ButtonInteraction, wordWolf: WordWolf, id: string, index: string) {
+      await wordWolf.answer(interaction, id, Number(index));
+    },
+  },
+  questionResult: {
+    component: (id: string) =>
+      new ButtonBuilder()
+        .setCustomId(`questionResult-${id}`)
+        .setLabel('アンケート結果を見る')
+        .setStyle(ButtonStyle.Primary),
+    async execute(interaction: ButtonInteraction, wordWolf: WordWolf, id: string) {
+      await wordWolf.showQuestionResult(interaction, id);
+    },
+  },
+  vote: {
+    component: (id: string, name: string) =>
+      new ButtonBuilder().setCustomId(`vote-${id}`).setLabel(name).setStyle(ButtonStyle.Primary),
+    async execute(interaction: ButtonInteraction, wordWolf: WordWolf, id: string) {
+      await wordWolf.vote(interaction, id);
     },
   },
   result: {
@@ -94,48 +132,47 @@ const registration = {
   },
 };
 
-function generateStartButton(time: number) {
-  return {
-    component: new ButtonBuilder()
-      .setCustomId(`start${time}`)
-      .setLabel(timeTitle(time))
-      .setStyle(ButtonStyle.Primary),
-    async execute(interaction: ButtonInteraction, wordWolf: WordWolf) {
-      await wordWolf.start(interaction, time);
-    },
-  };
-}
-
-type CustomId = keyof typeof registration;
-
-export const button = Object.fromEntries(
-  (Object.keys(registration) as CustomId[]).map((id) => [id, registration[id].component] as const),
-) as { [key in CustomId]: ButtonBuilder };
-
-const manageButtonIds = ['manageYes', 'manageNo', 'manageContinue', 'manageFinish'] as const;
+type Registration = typeof registration;
+type ButtonKey = keyof Registration;
+type AnyExecute = (
+  interaction: ButtonInteraction,
+  wordWolf: WordWolf,
+  ...args: string[]
+) => Promise<void>;
 
 export const buttonInteraction = async (interaction: ButtonInteraction) => {
-  const customId = interaction.customId as CustomId;
-  if (manageButtonIds.includes(customId as (typeof manageButtonIds)[number])) {
-    await registration[customId].execute(interaction, null as unknown as WordWolf);
-    return;
-  }
-
   const wordWolf = game.get(interaction);
   if (wordWolf === null) {
     await interaction.reply({ content: '`/wordwolf`しようね', flags });
     return;
   }
-  const [action, ...params] = customId.split('-');
-  if (['answer', 'questionResult', 'vote'].includes(action)) {
-    if (action === 'answer') {
-      await wordWolf.answer(interaction, params[0], Number(params[1]));
-    } else if (action === 'questionResult') {
-      await wordWolf.showQuestionResult(interaction, params[0]);
-    } else {
-      await wordWolf.vote(interaction, params[0]);
-    }
-  } else {
-    await registration[customId].execute(interaction, wordWolf);
-  }
+  const [customId, ...params] = interaction.customId.split('-');
+  await (registration[customId as ButtonKey].execute as AnyExecute)(
+    interaction,
+    wordWolf,
+    ...params,
+  );
 };
+
+type ButtonComponentBuilder<T extends ButtonKey> = Registration[T]['component'] extends (
+  ...args: infer P
+) => ButtonBuilder
+  ? [T, ...P]
+  : [T];
+export type ButtonInfoArg = {
+  [K in ButtonKey]: Registration[K]['component'] extends (...args: infer _P) => ButtonBuilder
+    ? ButtonComponentBuilder<K>
+    : K | ButtonComponentBuilder<K>;
+}[ButtonKey];
+
+export function makeButtonRow(...buttonInfos: ButtonInfoArg[]) {
+  const buttons = buttonInfos.map((info) => {
+    const [key, ...args] = Array.isArray(info) ? info : [info];
+    const component = registration[key as ButtonKey].component;
+    if (typeof component === 'function') {
+      return (component as (...args: unknown[]) => ButtonBuilder)(...args);
+    }
+    return component;
+  });
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
+}

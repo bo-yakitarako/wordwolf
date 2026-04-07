@@ -1,5 +1,10 @@
-import { ActionRowBuilder, ButtonBuilder, EmbedBuilder, EmbedField } from 'discord.js';
-import { button } from './components/buttons';
+import {
+  EmbedBuilder,
+  EmbedField,
+  GuildMember,
+  RepliableInteraction,
+  EmbedAuthorOptions as Author,
+} from 'discord.js';
 
 export function shuffle<T>(array: T[]): T[] {
   const copy = [...array];
@@ -12,14 +17,19 @@ export function shuffle<T>(array: T[]): T[] {
   return shuffledArray;
 }
 
-type ButtonKey = keyof typeof button;
-export const makeButtonRow = (...buttonKeys: ButtonKey[]) => {
-  const buttons = buttonKeys.map((key) => button[key]);
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(buttons);
+type NameArrange = (name: string) => string;
+export const memberInfo = ({ member, user }: RepliableInteraction, nameArrange?: NameArrange) => {
+  if (member instanceof GuildMember) {
+    const name = nameArrange ? nameArrange(member.displayName) : member.displayName;
+    return { name, iconURL: member.displayAvatarURL() };
+  }
+  const name = nameArrange ? nameArrange(user.username) : user.username;
+  return { name, iconURL: user.displayAvatarURL() };
 };
 
 const colors = {
   info: 0xe8d44f,
+  primary: 0x3b93ff,
   success: 0x53fc94,
   failure: 0xff5757,
 };
@@ -39,10 +49,29 @@ export function buildEmbed(
   fields: EmbedField[],
   color: ColorKey,
 ): EmbedBuilder;
-export function buildEmbed(title: string, ...params: DescriptionParams | FieldsParams | AllParams) {
+export function buildEmbed(author: Author, description: string): EmbedBuilder;
+export function buildEmbed(author: Author, description: string, color: ColorKey): EmbedBuilder;
+export function buildEmbed(author: Author, description: string, fields: EmbedField[]): EmbedBuilder;
+export function buildEmbed(
+  author: Author,
+  description: string,
+  fields: EmbedField[],
+  color: ColorKey,
+): EmbedBuilder;
+export function buildEmbed(author: Author, description: string, fields: EmbedField[]): EmbedBuilder;
+export function buildEmbed(
+  author: Author,
+  description: string,
+  fields: EmbedField[],
+  color: ColorKey,
+): EmbedBuilder;
+export function buildEmbed(
+  title: string | Author,
+  ...params: DescriptionParams | FieldsParams | AllParams
+) {
   let description = '';
   let fields: EmbedField[] = [];
-  let color: ColorKey = 'info';
+  let color: ColorKey = 'primary';
   if (params[0] instanceof Array) {
     fields = params[0];
     if (typeof params[1] === 'string') {
@@ -60,7 +89,11 @@ export function buildEmbed(title: string, ...params: DescriptionParams | FieldsP
     }
   }
   const embed = new EmbedBuilder();
-  embed.setTitle(title);
+  if (typeof title === 'string') {
+    embed.setTitle(title);
+  } else {
+    embed.setAuthor(title);
+  }
   embed.setColor(colors[color]);
   if (description) {
     embed.setDescription(description);
